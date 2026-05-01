@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Scanner Pro — Professional Document Scanner</title>
+    <meta name="description" content="Professional online document scanner. Upload your image and get a clean, high-quality scanned document with multiple effects.">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+        <!-- Sun icon (shown in dark mode => click to go light) -->
+        <svg id="icon-sun" class="icon-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <!-- Moon icon (shown in light mode => click to go dark) -->
+        <svg id="icon-moon" class="icon-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+    </button>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header fade-in">
+            <h1 class="app-title">Image Scanner Pro</h1>
+            <p class="app-subtitle">Convert your images into professional-looking scanned documents</p>
+        </header>
+
+        <div class="content-wrapper">
+            <!-- ==================== UPLOAD CARD ==================== -->
+            <div id="upload-card" class="glass-card zoom-in">
+                <!-- Scan Effect Selector -->
+                <div class="effect-selector">
+                    <button class="effect-btn active" data-effect="magic" title="Best automatic scan quality">✨ Magic</button>
+                    <button class="effect-btn" data-effect="enhanced" title="Enhanced colors with better contrast">🎨 Enhanced</button>
+                    <button class="effect-btn" data-effect="bw" title="Clean black & white for text">📝 B&W</button>
+                    <button class="effect-btn" data-effect="original" title="Keep original with cropping only">📷 Original</button>
+                </div>
+
+                <!-- Drop Zone -->
+                <div id="drop-zone" class="drop-zone" tabindex="0">
+                    <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <p class="drop-zone-title">Drag & Drop your image here</p>
+                    <p class="drop-zone-hint">or click to select a file</p>
+                    <p class="drop-zone-paste">You can also paste (Ctrl+V) from clipboard</p>
+                    <input type="file" id="file-input" class="file-input-hidden" accept="image/*">
+                </div>
+
+                <!-- Upload Spinner -->
+                <div id="upload-spinner" class="spinner-container">
+                    <div class="spinner"></div>
+                    <p class="spinner-text">Processing your document…</p>
+                </div>
+            </div>
+
+            <!-- ==================== RESULT CARD ==================== -->
+            <div id="result-card" class="glass-card result-card">
+                <h2 class="result-title">Scan Complete!</h2>
+                <div class="result-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span id="effect-badge-text">Magic Scan</span>
+                </div>
+
+                <!-- Comparison: Original vs Scanned -->
+                <div class="comparison-container">
+                    <div class="comparison-panel">
+                        <div class="comparison-label">Original</div>
+                        <img id="original-image" src="" alt="Original Image">
+                    </div>
+                    <div class="comparison-panel">
+                        <div class="comparison-label">Scanned</div>
+                        <img id="scanned-image" src="" alt="Scanned Image">
+                    </div>
+                </div>
+
+                <!-- Re-scan with different effect -->
+                <div class="effect-selector" id="rescan-effects">
+                    <button class="effect-btn active" data-effect="magic">✨ Magic</button>
+                    <button class="effect-btn" data-effect="enhanced">🎨 Enhanced</button>
+                    <button class="effect-btn" data-effect="bw">📝 B&W</button>
+                    <button class="effect-btn" data-effect="original">📷 Original</button>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="btn-row">
+                    <a id="download-image-btn" href="#" download class="btn btn-primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Download Image
+                    </a>
+                    <button id="generate-pdf-btn" class="btn btn-secondary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                        Generate PDF
+                    </button>
+                    <button id="extract-text-btn" class="btn btn-success">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="17" y1="10" x2="3" y2="10"/>
+                            <line x1="21" y1="6" x2="3" y2="6"/>
+                            <line x1="21" y1="14" x2="3" y2="14"/>
+                            <line x1="17" y1="18" x2="3" y2="18"/>
+                        </svg>
+                        Extract Text (OCR)
+                    </button>
+                </div>
+
+                <!-- OCR Language -->
+                <div class="ocr-controls">
+                    <span class="ocr-label">OCR Language:</span>
+                    <select id="ocr-lang" class="ocr-select">
+                        <option value="eng" selected>English</option>
+                        <option value="ara+eng">Arabic + English</option>
+                        <option value="ara">Arabic</option>
+                    </select>
+                </div>
+
+                <!-- PDF Spinner -->
+                <div id="pdf-spinner" class="spinner-container">
+                    <div class="spinner"></div>
+                    <p class="spinner-text">Generating PDF…</p>
+                </div>
+
+                <!-- OCR Spinner -->
+                <div id="ocr-spinner" class="spinner-container">
+                    <div class="spinner"></div>
+                    <p class="spinner-text">Extracting text…</p>
+                </div>
+
+                <!-- PDF Result -->
+                <div id="pdf-result" class="pdf-result-section">
+                    <h3 class="pdf-result-title">📄 PDF Ready!</h3>
+                    <a id="download-pdf-btn" href="#" download class="btn btn-success">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Download PDF
+                    </a>
+                </div>
+
+                <!-- OCR Result -->
+                <div id="ocr-result" class="ocr-result-section">
+                    <h3 class="ocr-result-title">Extracted Text</h3>
+                    <textarea id="ocr-text" class="ocr-textarea" rows="8" readonly></textarea>
+                    <div class="btn-row" style="margin-top: 0.75rem;">
+                        <button id="copy-text-btn" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                            Copy
+                        </button>
+                        <a id="download-text-btn" href="#" download class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            Download TXT
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Scan Again -->
+                <div class="scan-again-row btn-row">
+                    <button id="scan-again-btn" class="btn btn-danger">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                        Scan Another Image
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rescan spinner (shown during effect change) -->
+            <div id="rescan-spinner" class="spinner-container">
+                <div class="spinner"></div>
+                <p class="spinner-text">Applying effect…</p>
+            </div>
+        </div>
+
+        <footer class="app-footer fade-in">
+            Image Scanner Pro — No data stored on server
+        </footer>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

@@ -205,95 +205,63 @@ def find_document_contour_by_threshold(resized: np.ndarray) -> np.ndarray | None
 
 def magic_scan_effect(warped: np.ndarray) -> np.ndarray:
     """
-    High-quality document scan effect that matches onlinephotoscanner.com quality.
-    Uses multi-pass background normalization + gamma correction for a clean,
-    professional scanned-document look with bright white backgrounds.
+    Clean Document scan — produces a professional grayscale scan with
+    pure white background and crisp dark text/ink. The go-to mode for
+    most documents, notes, and forms.
     """
-    # Step 1: Convert to grayscale
     gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-
-    # Step 2: Bilateral filter to reduce noise while preserving edges
-    gray = cv2.bilateralFilter(gray, 11, 75, 75)
-
-    # Step 3: Multi-scale background estimation and normalization
-    # Use a large morphological closing to estimate the background
     h, w = gray.shape[:2]
-    # Primary background estimation with large kernel
-    bg_kernel_size = max(51, (min(h, w) // 5) | 1)  # ensure odd, large kernel
-    bg_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (bg_kernel_size, bg_kernel_size))
-    background = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, bg_kernel)
 
-    # Also use large median blur for secondary estimation
-    med_kernel = max(51, (min(h, w) // 6) | 1)
-    background2 = cv2.medianBlur(gray, med_kernel)
+    # Step 1: Denoise while preserving edges
+    denoised = cv2.bilateralFilter(gray, 9, 50, 50)
 
-    # Take the maximum of both estimates (brighter = more background)
-    background = np.maximum(background, background2)
+    # Step 2: Multi-scale background estimation
+    k1 = max(51, (min(h, w) // 4) | 1)
+    bg_morph = cv2.morphologyEx(
+        denoised, cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k1, k1))
+    )
+    k2 = max(51, (min(h, w) // 5) | 1)
+    bg_median = cv2.medianBlur(denoised, k2)
+    background = np.maximum(bg_morph, bg_median).astype(np.float32)
+    background = cv2.GaussianBlur(background, (0, 0), k1 // 3)
+    background[background < 1] = 1
 
-    # Smooth the background estimate
-    background = cv2.GaussianBlur(background, (0, 0), bg_kernel_size // 3)
+    # Step 3: Normalize — divide by background so lighting is even
+    norm = (denoised.astype(np.float32) / background * 255.0)
+    norm = np.clip(norm, 0, 255).astype(np.uint8)
 
-    # Divide by background to normalize uneven lighting
-    bg_float = background.astype(np.float32)
-    bg_float[bg_float < 1] = 1
-    normalized = (gray.astype(np.float32) / bg_float * 255.0)
-    normalized = np.clip(normalized, 0, 255).astype(np.uint8)
+    # Step 4: Contrast stretch to push background → white, ink → dark
+    lo = np.percentile(norm, 2)
+    hi = np.percentile(norm, 98)
+    if hi - lo > 10:
+        norm = np.clip((norm.astype(np.float32) - lo) * 255.0 / (hi - lo), 0, 255).astype(np.uint8)
 
-    # Step 4: Aggressive gamma correction to push whites whiter
-    gamma = 2.2
-    inv_gamma = 1.0 / gamma
-    table = np.array([
-        ((i / 255.0) ** inv_gamma) * 255
-        for i in np.arange(0, 256)
-    ]).astype("uint8")
-    normalized = cv2.LUT(normalized, table)
+    # Step 5: Gamma curve — brighten midtones/background, keep darks dark
+    gamma_table = np.array([
+        np.clip(((i / 255.0) ** 0.55) * 255, 0, 255)
+        for i in range(256)
+    ], dtype=np.uint8)
+    norm = cv2.LUT(norm, gamma_table)
 
-    # Step 5: Contrast stretching - clip aggressively to whiten background
-    min_val = np.percentile(normalized, 1)
-    max_val = np.percentile(normalized, 95)  # clip higher to push more to white
-    if max_val - min_val > 0:
-        stretched = np.clip(
-            (normalized.astype(np.float32) - min_val) * 255.0 / (max_val - min_val),
-            0, 255
-        ).astype(np.uint8)
-    else:
-        stretched = normalized
+    # Step 6: Sharpen for crisp edges
+    blurred = cv2.GaussianBlur(norm, (0, 0), 1.5)
+    sharp = cv2.addWeighted(norm, 1.6, blurred, -0.6, 0)
 
-    # Step 6: Second pass gamma to further brighten background
-    gamma2 = 1.4
-    inv_gamma2 = 1.0 / gamma2
-    table2 = np.array([
-        ((i / 255.0) ** inv_gamma2) * 255
-        for i in np.arange(0, 256)
-    ]).astype("uint8")
-    stretched = cv2.LUT(stretched, table2)
+    # Step 7: Push near-white pixels to pure 255
+    sharp = np.where(sharp >= 210, 255, sharp).astype(np.uint8)
 
-    # Step 7: CLAHE for local contrast (make text pop)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(stretched)
+    # Step 8: Boost text darkness — pixels darker than midpoint get darker
+    dark_mask = sharp < 140
+    sharp = np.where(dark_mask, np.clip(sharp.astype(np.float32) * 0.7, 0, 255), sharp).astype(np.uint8)
 
-    # Step 8: Blend CLAHE result with stretched to avoid over-darkening
-    result = cv2.addWeighted(enhanced, 0.4, stretched, 0.6, 0)
-
-    # Step 9: Unsharp masking for crispness
-    blurred = cv2.GaussianBlur(result, (0, 0), 2)
-    sharpened = cv2.addWeighted(result, 1.5, blurred, -0.5, 0)
-
-    # Step 10: Final denoise
-    result = cv2.fastNlMeansDenoising(sharpened, h=10, templateWindowSize=7, searchWindowSize=21)
-
-    # Step 11: Final white balance - ensure background is truly white
-    # Pixels that are light enough should be pushed to pure white
-    _, white_mask = cv2.threshold(result, 200, 255, cv2.THRESH_BINARY)
-    result = np.where(white_mask == 255, 255, result).astype(np.uint8)
-
-    return result
+    return sharp
 
 
 def enhanced_scan_effect(warped: np.ndarray) -> np.ndarray:
     """
-    Enhanced color scan - keeps colors but improves contrast and sharpness.
-    Good for colorful documents, receipts with logos, etc.
+    Enhanced color scan — keeps colors but improves contrast, sharpness,
+    and whitens the background. Good for colorful documents, receipts, etc.
     """
     # CLAHE on L channel in LAB space
     lab = cv2.cvtColor(warped, cv2.COLOR_BGR2LAB)
@@ -325,33 +293,87 @@ def enhanced_scan_effect(warped: np.ndarray) -> np.ndarray:
     return result
 
 
+def _sauvola_threshold(gray: np.ndarray, window_size: int = 25, k: float = 0.15,
+                       r: float = 128.0) -> np.ndarray:
+    """
+    Sauvola local thresholding — produces cleaner results than OpenCV's
+    adaptive threshold for document scanning. For each pixel:
+        T(x,y) = mean(x,y) * (1 + k * (std(x,y) / r - 1))
+    Pixels >= T are white, below are black.
+    """
+    gray_f = gray.astype(np.float64)
+    # Integral-image based local mean & variance (very fast)
+    mean = cv2.blur(gray_f, (window_size, window_size))
+    mean_sq = cv2.blur(gray_f * gray_f, (window_size, window_size))
+    std = np.sqrt(np.clip(mean_sq - mean * mean, 0, None))
+    threshold = mean * (1.0 + k * (std / r - 1.0))
+    return np.where(gray_f >= threshold, 255, 0).astype(np.uint8)
+
+
 def bw_scan_effect(warped: np.ndarray) -> np.ndarray:
     """
-    High-quality black & white effect using adaptive thresholding.
-    Best for text-heavy documents.
+    Professional-quality black & white document scan matching
+    onlinephotoscanner.com output. Uses multi-scale background
+    normalization + Sauvola local thresholding for clean, crisp results
+    even on photos of handwritten notes or unevenly-lit pages.
     """
     gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-    gray = cv2.bilateralFilter(gray, 9, 75, 75)
+    h, w = gray.shape[:2]
 
-    bg_kernel = max(35, (min(gray.shape[:2]) // 8) | 1)
-    background = cv2.medianBlur(gray, bg_kernel)
-    normalized = cv2.divide(gray, background, scale=255)
+    # Step 1: Light denoise — bilateral preserves edges
+    denoised = cv2.bilateralFilter(gray, 7, 40, 40)
 
-    blurred = cv2.GaussianBlur(normalized, (0, 0), 3)
+    # Step 2: Background estimation (morphological close + median, blended)
+    k1 = max(51, (min(h, w) // 4) | 1)
+    bg_morph = cv2.morphologyEx(
+        denoised, cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k1, k1))
+    )
+    k2 = max(51, (min(h, w) // 5) | 1)
+    bg_median = cv2.medianBlur(denoised, k2)
+    background = np.maximum(bg_morph, bg_median).astype(np.float32)
+    background = cv2.GaussianBlur(background, (0, 0), k1 // 3)
+    background[background < 1] = 1
+
+    # Step 3: Divide to remove uneven lighting
+    normalized = np.clip(
+        denoised.astype(np.float32) / background * 255.0, 0, 255
+    ).astype(np.uint8)
+
+    # Step 4: Contrast stretch
+    lo = np.percentile(normalized, 1)
+    hi = np.percentile(normalized, 99)
+    if hi - lo > 10:
+        normalized = np.clip(
+            (normalized.astype(np.float32) - lo) * 255.0 / (hi - lo),
+            0, 255
+        ).astype(np.uint8)
+
+    # Step 5: Sharpen before thresholding to make ink edges crisp
+    blurred = cv2.GaussianBlur(normalized, (0, 0), 1.2)
     sharp = cv2.addWeighted(normalized, 1.5, blurred, -0.5, 0)
 
-    # Adaptive threshold for clean B&W
-    scanned = cv2.adaptiveThreshold(
-        sharp, 255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY,
-        35, 12
-    )
+    # Step 6: Sauvola thresholding — adapts locally, handles gradients well
+    win = max(25, (min(h, w) // 30) | 1)
+    if win % 2 == 0:
+        win += 1
+    bw = _sauvola_threshold(sharp, window_size=win, k=0.12, r=128)
 
-    # Clean small noise
-    kernel = np.ones((2, 2), np.uint8)
-    scanned = cv2.morphologyEx(scanned, cv2.MORPH_OPEN, kernel, iterations=1)
-    return scanned
+    # Step 7: Clean up — remove tiny noise specks
+    # Small open to remove salt noise
+    kernel_small = np.ones((2, 2), np.uint8)
+    bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel_small, iterations=1)
+
+    # Remove tiny connected components (noise dots)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+        cv2.bitwise_not(bw), connectivity=8
+    )
+    min_area = max(4, int(h * w * 0.000015))
+    for label_id in range(1, num_labels):
+        if stats[label_id, cv2.CC_STAT_AREA] < min_area:
+            bw[labels == label_id] = 255
+
+    return bw
 
 
 SCAN_EFFECTS = {

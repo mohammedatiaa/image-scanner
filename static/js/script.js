@@ -57,15 +57,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let availableEffects = [];
 
     const EFFECT_LABELS = {
-        original: 'Original',
+        original: 'Original Image',
+        bw: 'BW Scan',
+        enhanced: 'Enhanced Scan',
+        ocr_highlight: 'OCR Highlight',
         rgb: 'RGB',
         low_contrast: 'Low Contrast',
         high_contrast: 'High Contrast',
-        median: 'Median Blur',
         average: 'Average Blur',
-        black_white: 'Black & White',
     };
-    const DEFAULT_EFFECTS = ['original', 'rgb', 'low_contrast', 'high_contrast', 'median', 'average', 'black_white'];
+    const DEFAULT_EFFECTS = ['original', 'bw', 'enhanced', 'ocr_highlight', 'rgb', 'low_contrast', 'high_contrast', 'average'];
 
     function labelFor(effect) {
         return EFFECT_LABELS[effect] || effect;

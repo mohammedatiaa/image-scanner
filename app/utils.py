@@ -1,12 +1,27 @@
 import cv2
-import numpy as np
 import imutils
 from imutils.perspective import four_point_transform
-from skimage.filters import threshold_sauvola
+
+FILTERS = {
+    "rgb": lambda img: cv2.cvtColor(img, cv2.COLOR_BGR2RGB),
+    "low_contrast": lambda img: cv2.convertScaleAbs(img, alpha=0.3, beta=50),
+    "high_contrast": lambda img: cv2.convertScaleAbs(img, alpha=2.5, beta=-30),
+    "median": lambda img: cv2.medianBlur(img, 15),
+    "average": lambda img: cv2.blur(img, (15, 15)),
+    "black_white": lambda img: cv2.adaptiveThreshold(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 10),
+}
+IDENTITY = lambda img: img
 
 
-def scan_document(image_path: str, output_path: str) -> None:
-    """Detect a document, correct perspective, and produce a clean B&W scan."""
+def get_filter_names() -> list[str]:
+    return list(FILTERS.keys())
+
+
+def apply_filter(effect: str, image):
+    return FILTERS.get(effect, IDENTITY)(image)
+
+
+def prepare_image(image_path: str):
     image = cv2.imread(image_path)
     if image is None:
         raise ValueError("Unable to read image.")
@@ -29,8 +44,15 @@ def scan_document(image_path: str, output_path: str) -> None:
             doc = approx
             break
 
-    warped = four_point_transform(image, doc.reshape(4, 2) * ratio) if doc is not None else image
-    gray_w = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-    thresh = threshold_sauvola(gray_w, window_size=25)
-    binary = ((gray_w > thresh) * 255).astype(np.uint8)
-    cv2.imwrite(output_path, binary)
+    return four_point_transform(image, doc.reshape(4, 2) * ratio) if doc is not None else image
+
+
+def scan_document(image_path: str, output_path: str, effect: str = "original") -> None:
+    base = prepare_image(image_path)
+    cv2.imwrite(output_path, apply_filter(effect, base))
+
+
+def generate_filtered_images(image_path: str, outputs: dict[str, str]) -> None:
+    base = prepare_image(image_path)
+    for effect, output_path in outputs.items():
+        cv2.imwrite(output_path, apply_filter(effect, base))

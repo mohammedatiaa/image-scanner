@@ -3,79 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Scanner Pro</title>
-    <meta name="description" content="Professional online document scanner. Upload your image and get a clean scanned document.">
+    <title>Image Scanner Pro — Professional Document Scanner</title>
+    <meta name="description" content="Professional online document scanner. Upload your image and get a clean, high-quality scanned document with multiple effects.">
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
 </head>
 <body>
     <!-- Theme Toggle -->
     <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+        <!-- Sun icon (shown in dark mode => click to go light) -->
         <svg id="icon-sun" class="icon-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
+        <!-- Moon icon (shown in light mode => click to go dark) -->
         <svg id="icon-moon" class="icon-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
         </svg>
     </button>
 
     <div class="app-container">
+        <!-- Header -->
         <header class="app-header fade-in">
             <h1 class="app-title">Image Scanner Pro</h1>
-            <p class="app-subtitle">Upload an image and get a professional scanned document</p>
+            <p class="app-subtitle">Convert your images into professional-looking scanned documents</p>
         </header>
 
         <div class="content-wrapper">
-            <!-- Upload Card -->
+            <!-- ==================== UPLOAD CARD ==================== -->
             <div id="upload-card" class="glass-card zoom-in">
+                <!-- Scan Effect Selector -->
+                <div class="effect-selector" id="upload-effects"></div>
+
+                <!-- Drop Zone -->
                 <div id="drop-zone" class="drop-zone" tabindex="0">
                     <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
                     </svg>
                     <p class="drop-zone-title">Drag & Drop your image here</p>
                     <p class="drop-zone-hint">or click to select a file</p>
                     <p class="drop-zone-paste">You can also paste (Ctrl+V) from clipboard</p>
                     <input type="file" id="file-input" class="file-input-hidden" accept="image/*">
                 </div>
+
+                <!-- Upload Spinner -->
                 <div id="upload-spinner" class="spinner-container">
                     <div class="spinner"></div>
                     <p class="spinner-text">Processing your document…</p>
                 </div>
             </div>
 
-            <!-- Result Card -->
+            <!-- ==================== RESULT CARD ==================== -->
             <div id="result-card" class="glass-card result-card">
                 <h2 class="result-title">Scan Complete!</h2>
                 <div class="result-badge">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    <span>Document Scanned</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span id="effect-badge-text">Magic Scan</span>
                 </div>
 
-                <div class="comparison-container">
-                    <div class="comparison-panel">
-                        <div class="comparison-label">Original</div>
-                        <img id="original-image" src="" alt="Original Image">
-                    </div>
-                    <div class="comparison-panel">
-                        <div class="comparison-label">Scanned</div>
-                        <img id="scanned-image" src="" alt="Scanned Image">
-                    </div>
+                <!-- Main Image Preview -->
+                <div class="main-image-container">
+                    <img id="main-scanned-image" class="scanned-image-full" src="" alt="Scanned Document">
                 </div>
 
+                <!-- Filter Gallery -->
+                <div id="gallery" class="gallery"></div>
+
+                <!-- Filter Buttons -->
+                <div class="effect-selector" id="filter-buttons"></div>
+
+                <!-- Action Buttons -->
                 <div class="btn-row">
                     <a id="download-image-btn" href="#" download class="btn btn-primary">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
                         Download Image
                     </a>
                 </div>
 
+                <!-- Scan Again -->
                 <div class="scan-again-row btn-row">
                     <button id="scan-again-btn" class="btn btn-danger">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -86,12 +106,17 @@
                     </button>
                 </div>
             </div>
+
         </div>
 
-        <footer class="app-footer fade-in">Image Scanner Pro — No data stored on server</footer>
+        <footer class="app-footer fade-in">
+            Image Scanner Pro — No data stored on server
+        </footer>
     </div>
 
+    <!-- Toast -->
     <div id="toast" class="toast"></div>
+
     <script src="/static/js/script.js"></script>
 </body>
 </html>

@@ -153,7 +153,3 @@ uploads/*
 # Test files
 *.test.*
 test_*
-
-# Word temp files
-~$*
-~WRL*
